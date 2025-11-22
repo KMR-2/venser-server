@@ -14,5 +14,14 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "index.html"));
 });
 
+const fs = require('fs');
+
+// Получить всех пользователей
+app.get("/api/users", (req, res) => {
+  if (!fs.existsSync("users.json")) return res.json([]);
+  const users = JSON.parse(fs.readFileSync("users.json"));
+  res.json(users.map(u => ({ id: u.id, name: u.name })));
+});
+
 // Vercel требует экспорт функции:
 module.exports = app;
