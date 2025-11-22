@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Чат в реальном времени</title>
+  <style>
+    body { font-family: sans-serif; }
+    #chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-bottom: 10px; }
+    #messageInput { width: 70%; }
+  </style>
+</head>
+<body>
+
+<h2>Чат</h2>
+
+<!-- Регистрация пользователя -->
+<div>
+  Email: <input type="text" id="email">
+  <button id="registerBtn">Зарегистрироваться</button>
+</div>
+
+<hr>
+
+<!-- Чат -->
+<div id="chat"></div>
+<input type="text" id="messageInput" placeholder="Введите сообщение">
+<button id="sendBtn">Отправить</button>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  let currentUserId = null;
+
+  // Регистрация по email
+  document.getElementById('registerBtn').onclick = async () => {
+    const email = document.getElementById('email').value;
+    if (!email) return alert('Введите email');
+
+    const res = await fetch('/register', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name: email, password: '123' })
+    });
+    const data = await res.json();
+    currentUserId = data.user.id;
+    alert('Вы зарегистрированы! Ваш ID: ' + currentUserId);
+  };
+
+  // Отправка сообщения
+  document.getElementById('sendBtn').onclick = () => {
+    const text = document.getElementById('messageInput').value;
+    const toId = prompt('Введите ID получателя'); // Временно через prompt
+    if (!text || !toId) return;
+
+    socket.emit('send_message', { fromId: currentUserId, toId: parseInt(toId), text });
+    document.getElementById('messageInput').value = '';
+  };
+
+  // Получение сообщений в реальном времени
+  socket.on('receive_message', (msg) => {
+    const chat = document.getElementById('chat');
+    chat.innerHTML += <div><b>${msg.fromId} → ${msg.toId}:</b> ${msg.text}</div>;
+    chat.scrollTop = chat.scrollHeight;
+  });
+</script>
+
+</body>
+</html>

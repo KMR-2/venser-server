@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1,
+    "name": "Тест",
+    "password": "$2b$10$N/x5faDlIWmIqsnvDwjrdOF8rjMW6ISy09qdTMoJV64J.WJ1WlFOu"
+  },
+  {
+    "id": 2	
+,
+    "name": "Друг",
+    "password": "$2b$10$m/zH08kJU/FjfUgV/9tMP.1xYruOI6oQ0UbnStSvUgVuJzidcq73y"
+  }
+]
