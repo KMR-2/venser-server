@@ -2,67 +2,108 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Чат в реальном времени</title>
+  <title>Messenger</title>
   <style>
-    body { font-family: sans-serif; }
-    #chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-bottom: 10px; }
-    #messageInput { width: 70%; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input, button { margin: 5px 0; padding: 8px; }
+    #messages { margin-top: 20px; border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: scroll; }
   </style>
 </head>
 <body>
+  <h1>Messenger</h1>
 
-<h2>Чат</h2>
+  <h2>Регистрация</h2>
+  <form id="registerForm">
+    <input type="text" id="regName" placeholder="Имя" required />
+    <input type="password" id="regPassword" placeholder="Пароль" required />
+    <button type="submit">Зарегистрироваться</button>
+  </form>
+  <div id="registerResult"></div>
 
-<!-- Регистрация пользователя -->
-<div>
-  Email: <input type="text" id="email">
-  <button id="registerBtn">Зарегистрироваться</button>
-</div>
+  <h2>Вход</h2>
+  <form id="loginForm">
+    <input type="text" id="loginName" placeholder="Имя" required />
+    <input type="password" id="loginPassword" placeholder="Пароль" required />
+    <button type="submit">Войти</button>
+  </form>
+  <div id="loginResult"></div>
 
-<hr>
+  <h2>Отправка сообщений</h2>
+  <form id="sendForm">
+    <input type="text" id="toId" placeholder="ID получателя" required />
+    <input type="text" id="messageText" placeholder="Сообщение" required />
+    <button type="submit">Отправить</button>
+  </form>
 
-<!-- Чат -->
-<div id="chat"></div>
-<input type="text" id="messageInput" placeholder="Введите сообщение">
-<button id="sendBtn">Отправить</button>
+  <h2>Сообщения</h2>
+  <div id="messages"></div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
-  let currentUserId = null;
+  <script>
+    let currentUserId = null;
 
-  // Регистрация по email
-  document.getElementById('registerBtn').onclick = async () => {
-    const email = document.getElementById('email').value;
-    if (!email) return alert('Введите email');
-
-    const res = await fetch('/register', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ name: email, password: '123' })
+    // Регистрация
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('regName').value;
+      const password = document.getElementById('regPassword').value;
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, password })
+      });
+      const data = await res.json();
+      document.getElementById('registerResult').innerText = JSON.stringify(data);
     });
-    const data = await res.json();
-    currentUserId = data.user.id;
-    alert('Вы зарегистрированы! Ваш ID: ' + currentUserId);
-  };
 
-  // Отправка сообщения
-  document.getElementById('sendBtn').onclick = () => {
-    const text = document.getElementById('messageInput').value;
-    const toId = prompt('Введите ID получателя'); // Временно через prompt
-    if (!text || !toId) return;
+    // Вход
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('loginName').value;
+      const password = document.getElementById('loginPassword').value;
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, password })
+      });
+      const data = await res.json();
+      if (data.user) currentUserId = data.user.id;
+      document.getElementById('loginResult').innerText = JSON.stringify(data);
+      loadMessages();
+    });
 
-    socket.emit('send_message', { fromId: currentUserId, toId: parseInt(toId), text });
-    document.getElementById('messageInput').value = '';
-  };
+    // Отправка сообщения
+    document.getElementById('sendForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const toId = parseInt(document.getElementById('toId').value);
+      const text = document.getElementById('messageText').value;
+      if (!currentUserId) {
+        alert("Сначала войдите!");
+        return;
+      }
+      await fetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromId: currentUserId, toId, text })
+      });
+      loadMessages();
+    });
 
-  // Получение сообщений в реальном времени
-  socket.on('receive_message', (msg) => {
-    const chat = document.getElementById('chat');
-    chat.innerHTML += <div><b>${msg.fromId} → ${msg.toId}:</b> ${msg.text}</div>;
-    chat.scrollTop = chat.scrollHeight;
-  });
-</script>
+    // Загрузка сообщений между текущим пользователем и всеми
+    async function loadMessages() {
+      if (!currentUserId) return;
+      const res = await fetch(/api/messages?user1=${currentUserId});
+      const data = await res.json();
+      const messagesDiv = document.getElementById('messages');
+      messagesDiv.innerHTML = '';
+      data.forEach(msg => {
+        const div = document.createElement('div');
+        div.innerText = От ${msg.fromId} к ${msg.toId}: ${msg.text};
+        messagesDiv.appendChild(div);
+      });
+    }
 
+    // Автообновление каждые 3 секунды
+    setInterval(loadMessages, 3000);
+  </script>
 </body>
 </html>
